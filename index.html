@@ -1164,7 +1164,7 @@ function gauss(x, mu, sig) {
     const arrowMidY = (y1 + y0 + 50) / 2;
     ctx.fillStyle = strokes[i]; ctx.font = '11px Helvetica Neue, sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText('≤ ε/3', arrowMidX + 8, arrowMidY - 2);
+    ctx.fillText('≤ ε/3', arrowMidX + 18, arrowMidY - 2);
     ctx.textAlign = 'center';
 
     // Control label below
@@ -1574,10 +1574,10 @@ function gauss(x, mu, sig) {
   arrow(350, 245, 350, 280);  // C → Final
   arrow(530, 160, 450, 280);  // D → Final
 
-  // Annotations — positioned at arrow midpoints, offset to avoid overlap
+  // Annotations — positioned to the right of the arrow paths to avoid overlap
   ctx.fillStyle = '#888'; ctx.font = '10px Helvetica Neue, sans-serif'; ctx.textAlign = 'left';
-  ctx.fillText('Hellinger + Cauchy–Schwarz', 225, 128);
-  ctx.fillText('elliptic potential', 190, 180);
+  ctx.fillText('Hellinger + Cauchy–Schwarz', 240, 135);
+  ctx.fillText('elliptic potential', 250, 178);
 })();
 
 </script>

@@ -1,0 +1,1580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Proof Walkthrough — Convex Neural Network Posteriors for RL</title>
+<script>
+  MathJax = {
+    tex: { inlineMath: [['$','$'], ['\\(','\\)']], displayMath: [['$$','$$'], ['\\[','\\]']] },
+    svg: { fontCache: 'global' }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+<style>
+/* ── Reset & base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #fafafa; --fg: #1a1a2e; --accent: #3b82f6;
+  --blue: #3b82f6; --green: #22c55e; --red: #ef4444;
+  --orange: #f97316; --purple: #a855f7;
+  --sidebar-w: 280px; --max-w: 820px;
+}
+html { scroll-behavior: smooth; font-size: 17px; }
+body {
+  font-family: 'Georgia', 'Times New Roman', serif;
+  background: var(--bg); color: var(--fg);
+  line-height: 1.72; overflow-x: hidden;
+}
+
+/* ── Sidebar TOC ── */
+nav#toc {
+  position: fixed; top: 0; left: 0;
+  width: var(--sidebar-w); height: 100vh;
+  background: #f0f0f5; border-right: 1px solid #ddd;
+  overflow-y: auto; padding: 1.2rem 0.8rem;
+  font-family: 'Helvetica Neue', sans-serif;
+  font-size: 0.78rem; z-index: 100;
+  transition: transform .3s ease;
+}
+nav#toc h2 { font-size: 0.9rem; margin-bottom: 0.6rem; color: var(--accent); letter-spacing: 0.04em; }
+nav#toc ol { list-style: none; padding-left: 0; }
+nav#toc li { margin-bottom: 0.25rem; }
+nav#toc a {
+  color: #555; text-decoration: none; display: block;
+  padding: 0.18rem 0.4rem; border-radius: 4px;
+  transition: background .2s, color .2s;
+}
+nav#toc a:hover, nav#toc a.active { background: var(--accent); color: #fff; }
+nav#toc .sub { padding-left: 1rem; font-size: 0.72rem; }
+
+/* Toggle button (mobile) */
+#toc-toggle {
+  display: none; position: fixed; top: 10px; left: 10px; z-index: 200;
+  background: var(--accent); color: #fff; border: none; border-radius: 6px;
+  padding: 0.4rem 0.7rem; cursor: pointer; font-size: 1rem;
+}
+
+/* ── Main content ── */
+main {
+  margin-left: var(--sidebar-w);
+  max-width: var(--max-w);
+  padding: 2.5rem 2rem 6rem;
+}
+
+/* ── Hero ── */
+.hero {
+  text-align: center; padding: 2rem 0 2.5rem;
+  border-bottom: 2px solid #e0e0e0; margin-bottom: 2.5rem;
+}
+.hero h1 { font-size: 1.6rem; line-height: 1.35; margin-bottom: 0.5rem; }
+.hero .subtitle { font-size: 1rem; color: #666; font-style: italic; }
+
+/* ── Sections ── */
+section { margin-bottom: 2.5rem; }
+h2 {
+  font-size: 1.35rem; border-bottom: 2px solid var(--accent);
+  padding-bottom: 0.3rem; margin: 2rem 0 1rem;
+  color: var(--accent);
+}
+h3 { font-size: 1.1rem; margin: 1.5rem 0 0.6rem; color: #333; }
+p { margin-bottom: 0.9rem; }
+
+/* ── Callout boxes ── */
+.callout {
+  border-left: 4px solid; border-radius: 6px;
+  padding: 0.9rem 1.1rem; margin: 1.2rem 0;
+  position: relative;
+}
+.callout .callout-title {
+  font-weight: 700; font-family: 'Helvetica Neue', sans-serif;
+  font-size: 0.85rem; text-transform: uppercase;
+  letter-spacing: 0.04em; margin-bottom: 0.4rem;
+}
+.callout.key-idea   { background: #eff6ff; border-color: var(--blue); }
+.callout.key-idea .callout-title { color: var(--blue); }
+.callout.prereq     { background: #f0fdf4; border-color: var(--green); }
+.callout.prereq .callout-title { color: #16a34a; }
+.callout.warning    { background: #fef2f2; border-color: var(--red); }
+.callout.warning .callout-title { color: var(--red); }
+.callout.big-picture { background: #fff7ed; border-color: var(--orange); }
+.callout.big-picture .callout-title { color: var(--orange); }
+.callout.checkpoint { background: #faf5ff; border-color: var(--purple); }
+.callout.checkpoint .callout-title { color: var(--purple); }
+
+/* ── Definition / Example / Lemma blocks ── */
+.def-block, .example-block, .lemma-block, .proof-block {
+  background: #fff; border: 1px solid #e0e0e0; border-radius: 8px;
+  padding: 1rem 1.2rem; margin: 1rem 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+.def-block .block-label { color: var(--blue); font-weight: 700; font-size: 0.9rem; }
+.example-block .block-label { color: var(--green); font-weight: 700; font-size: 0.9rem; }
+.lemma-block .block-label { color: var(--purple); font-weight: 700; font-size: 0.9rem; }
+
+/* ── Collapsible proofs ── */
+.proof-block {
+  border-left: 3px solid #888; background: #fafafa;
+}
+.proof-toggle {
+  cursor: pointer; user-select: none;
+  font-weight: 700; font-size: 0.9rem; color: #555;
+  display: flex; align-items: center; gap: 0.4rem;
+}
+.proof-toggle::before { content: '▶'; font-size: 0.7rem; transition: transform .2s; }
+.proof-toggle.open::before { transform: rotate(90deg); }
+.proof-body {
+  max-height: 0; overflow: hidden;
+  transition: max-height .4s ease, opacity .3s ease;
+  opacity: 0; margin-top: 0;
+}
+.proof-body.open { max-height: 5000px; opacity: 1; margin-top: 0.8rem; }
+
+/* ── Figures / canvas ── */
+.fig-container {
+  margin: 1.5rem 0; text-align: center;
+}
+.fig-container canvas {
+  display: block; margin: 0 auto;
+  max-width: 100%; border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.fig-caption {
+  font-size: 0.82rem; color: #666; margin-top: 0.5rem;
+  font-style: italic; max-width: 600px;
+  margin-left: auto; margin-right: auto;
+}
+
+/* ── Scroll-triggered fade-in ── */
+.reveal {
+  opacity: 0; transform: translateY(20px);
+  transition: opacity .5s ease, transform .5s ease;
+}
+.reveal.visible { opacity: 1; transform: translateY(0); }
+/* Sections themselves should always be visible; only children animate */
+section.reveal { opacity: 1; transform: none; }
+
+/* ── Summary chain ── */
+.chain-box {
+  background: linear-gradient(135deg, #fffbeb, #fef3c7);
+  border: 2px solid #f59e0b; border-radius: 10px;
+  padding: 1.5rem; margin: 1.5rem 0;
+}
+.chain-box ol { padding-left: 1.3rem; }
+.chain-box li { margin-bottom: 0.6rem; }
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  nav#toc { transform: translateX(-100%); }
+  nav#toc.open { transform: translateX(0); }
+  #toc-toggle { display: block; }
+  main { margin-left: 0; padding: 1.2rem 1rem 4rem; }
+}
+
+/* ── Interactive sliders ── */
+.slider-row {
+  display: flex; align-items: center; gap: 0.6rem;
+  font-family: 'Helvetica Neue', sans-serif; font-size: 0.82rem;
+  margin: 0.5rem 0;
+}
+.slider-row input[type=range] { flex: 1; max-width: 220px; }
+.slider-row .val { font-weight: 700; min-width: 2.5rem; }
+
+/* equation display */
+.display-eq { overflow-x: auto; margin: 0.8rem 0; }
+</style>
+</head>
+
+<body>
+<button id="toc-toggle" aria-label="Toggle navigation">☰</button>
+
+<nav id="toc">
+  <h2>Proof Walkthrough</h2>
+  <ol>
+    <li><a href="#roadmap">1. Roadmap</a></li>
+    <li><a href="#background">2. Mathematical Background</a>
+      <ol class="sub">
+        <li><a href="#bg-norms">Vectors &amp; Norms</a></li>
+        <li><a href="#bg-matrices">Matrices &amp; Eigenvalues</a></li>
+        <li><a href="#bg-convexity">Convexity</a></li>
+        <li><a href="#bg-distributions">Distributions</a></li>
+        <li><a href="#bg-proximal">Proximal Operators</a></li>
+      </ol>
+    </li>
+    <li><a href="#proof1">3. Proof 1: Convex Reformulation</a></li>
+    <li><a href="#interlude">4. Interlude: Log-Concave Posterior</a></li>
+    <li><a href="#proof2">5. Proof 2: MYULA Convergence</a>
+      <ol class="sub">
+        <li><a href="#langevin">Langevin Dynamics</a></li>
+        <li><a href="#three-errors">Three Error Sources</a></li>
+        <li><a href="#moreau-lemma">Moreau Smoothing</a></li>
+        <li><a href="#ula-conv">ULA Convergence</a></li>
+        <li><a href="#smoothing-bias">Smoothing Bias</a></li>
+      </ol>
+    </li>
+    <li><a href="#proof3">6. Proof 3: Bayesian Regret Bound</a>
+      <ol class="sub">
+        <li><a href="#simulation">Simulation Lemma</a></li>
+        <li><a href="#eluder">Eluder Dimension</a></li>
+        <li><a href="#hellinger">Hellinger Geometry</a></li>
+        <li><a href="#coupling">Approximate Sampling</a></li>
+        <li><a href="#assembly">Assembly</a></li>
+      </ol>
+    </li>
+    <li><a href="#summary">7. Summary: The Chain</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<!-- ═══════════ HERO ═══════════ -->
+<div class="hero">
+  <h1>A First-Year-Friendly Walkthrough of the Proofs</h1>
+  <div class="subtitle">Companion to <em>Efficient Exploration in Model-Based RL<br>with Convex Neural Network Posteriors</em> (NeurIPS 2026)</div>
+</div>
+
+<!-- ═══════════ §1 ROADMAP ═══════════ -->
+<section id="roadmap">
+<h2>1. Roadmap: What Are We Proving and Why?</h2>
+
+<div class="callout big-picture">
+  <div class="callout-title">Big Picture</div>
+  <p>The paper describes a method for teaching a computer agent to make good decisions by learning how the world works. The agent doesn't know the rules of the world (the "transition dynamics") and has to figure them out from experience, while also making good decisions along the way.</p>
+  <p>The central tension is the <strong>exploration–exploitation tradeoff</strong>: the agent must sometimes try new things (explore) to learn, even though sticking with what it already knows (exploit) would give better immediate results.</p>
+  <p>The paper's key trick is to use a special mathematical reformulation that makes the learning problem <em>convex</em> — meaning there's a single "best answer" with no confusing local traps. This convexity has three important consequences:</p>
+  <ol>
+    <li>We can find the best model parameters reliably (no local minima).</li>
+    <li>We can sample random models from a well-behaved probability distribution (for exploration).</li>
+    <li>We can prove that the agent's total "regret" grows slowly.</li>
+  </ol>
+</div>
+
+<p>The paper contains three main theoretical results:</p>
+<ol>
+  <li><strong>Proof 1 — Convex Reformulation</strong> (Theorem 3.1): A neural network training problem — which is normally non-convex and hard — can be rewritten as a convex problem in a higher-dimensional space.</li>
+  <li><strong>Proof 2 — MYULA Convergence</strong> (Theorem 3.3): A sampling algorithm (MYULA) can efficiently draw random samples from the posterior distribution, with a guaranteed accuracy.</li>
+  <li><strong>Proof 3 — Bayesian Regret Bound</strong> (Theorem 3.5): The agent's total regret over $N$ episodes grows as $\tilde{O}(H^{3/2}\sqrt{PdT})$, which is sublinear in the total number of steps $T$.</li>
+</ol>
+</section>
+
+<!-- ═══════════ §2 BACKGROUND ═══════════ -->
+<section id="background">
+<h2>2. Mathematical Background</h2>
+
+<h3 id="bg-norms">Vectors &amp; Norms</h3>
+
+<div class="def-block">
+  <div class="block-label">Definition — Euclidean Norm</div>
+  <p>The <strong>Euclidean norm</strong> (or $\ell_2$ norm) of a vector $\mathbf{v} \in \mathbb{R}^d$ is:</p>
+  <div class="display-eq">$$\|\mathbf{v}\| = \sqrt{v_1^2 + v_2^2 + \cdots + v_d^2}$$</div>
+  <p>This measures the "length" of the vector.</p>
+</div>
+
+<div class="example-block">
+  <div class="block-label">Example</div>
+  <ul>
+    <li>$\mathbf{v} = (3, 4)$: $\|\mathbf{v}\| = \sqrt{9+16} = 5$ (a 3-4-5 right triangle).</li>
+    <li>$\mathbf{v} = (1,1,1)$: $\|\mathbf{v}\| = \sqrt{3} \approx 1.73$.</li>
+    <li>$\mathbf{v} = (0,0,0)$: $\|\mathbf{v}\| = 0$ (only the zero vector has norm zero).</li>
+  </ul>
+</div>
+
+<div class="def-block">
+  <div class="block-label">Definition — Group LASSO Norm</div>
+  <p>If $\mathbf{z} \in \mathbb{R}^{2Pd}$ is partitioned into $2P$ blocks of size $d$, then:</p>
+  <div class="display-eq">$$g(\mathbf{z}) = \beta \sum_{j=1}^{2P} \|\mathbf{z}_j\|_2$$</div>
+  <p>This encourages entire blocks to be zero ("group sparsity").</p>
+</div>
+
+<h3 id="bg-matrices">Matrices &amp; Eigenvalues</h3>
+
+<div class="def-block">
+  <div class="block-label">Definition — Weighted Norms</div>
+  <p>Given a positive definite matrix $H$, the <strong>$H$-norm</strong> is $\|\mathbf{v}\|_H = \sqrt{\mathbf{v}^\top H \mathbf{v}}$. This stretches or compresses directions according to $H$.</p>
+  <p>In the paper, the $H_k^{-1}$-norm measures <em>uncertainty</em>: directions where the agent has little data get large norm (high uncertainty), encouraging exploration there.</p>
+</div>
+
+<!-- Animated figure: weighted norms -->
+<div class="fig-container reveal">
+  <canvas id="fig-weighted-norms" width="700" height="300"></canvas>
+  <div class="slider-row" style="justify-content:center">
+    <span>Eigenvalue ratio $\lambda_1/\lambda_2$:</span>
+    <input type="range" id="wnorm-slider" min="1" max="10" step="0.1" value="4">
+    <span class="val" id="wnorm-val">4.0</span>
+  </div>
+  <div class="fig-caption"><strong>Interactive:</strong> Drag the slider to change the eigenvalue ratio. Left: standard norm (always a circle). Right: $H$-norm (becomes more elliptical as the ratio grows). The short axis = certain direction; the long axis = uncertain direction.</div>
+</div>
+
+<h3 id="bg-convexity">Convexity</h3>
+
+<div class="def-block">
+  <div class="block-label">Definition — Convex Function</div>
+  <p>A function $f$ is <strong>convex</strong> if the line segment between any two points on its graph lies above the graph:</p>
+  <div class="display-eq">$$f(\lambda x + (1-\lambda)y) \leq \lambda f(x) + (1-\lambda)f(y) \quad \text{for all } \lambda \in [0,1]$$</div>
+</div>
+
+<!-- Animated figure: convex vs non-convex -->
+<div class="fig-container reveal">
+  <canvas id="fig-convex" width="700" height="320"></canvas>
+  <div class="fig-caption"><strong>Convex vs. non-convex.</strong> Left: $f(x)=x^2$. The chord (red dashed) always lies above the curve — gradient descent finds the global minimum. Right: $f(x)=x^4-2x^2$. The chord dips below — multiple local minima where gradient descent can get stuck.</div>
+</div>
+
+<div class="def-block">
+  <div class="block-label">Definition — Strong Convexity &amp; Smoothness</div>
+  <p>$f$ is <strong>$\mu$-strongly convex</strong> if $f(y) \geq f(x) + \nabla f(x)^\top(y-x) + \frac{\mu}{2}\|y-x\|^2$. It is <strong>$L$-smooth</strong> if $\|\nabla f(x) - \nabla f(y)\| \leq L\|x-y\|$.</p>
+  <p>The <strong>condition number</strong> $\kappa = L/\mu$ controls how elongated the contours are. $\kappa = 1$: circular (easy). $\kappa \gg 1$: elongated (hard).</p>
+</div>
+
+<!-- Animated figure: condition number -->
+<div class="fig-container reveal">
+  <canvas id="fig-condition" width="700" height="300"></canvas>
+  <div class="slider-row" style="justify-content:center">
+    <span>Condition number $\kappa$:</span>
+    <input type="range" id="cond-slider" min="1" max="15" step="0.5" value="1">
+    <span class="val" id="cond-val">1.0</span>
+  </div>
+  <div class="fig-caption"><strong>Interactive:</strong> Drag the slider to increase $\kappa$. Circular contours ($\kappa=1$) become elongated ellipses, making gradient descent zig-zag.</div>
+</div>
+
+<h3 id="bg-distributions">Probability Distributions</h3>
+
+<div class="def-block">
+  <div class="block-label">Definition — Log-Concave Distribution</div>
+  <p>A distribution with density $p(\mathbf{z}) \propto \exp(-U(\mathbf{z}))$ is <strong>log-concave</strong> if $U$ is convex, and <strong>strongly log-concave</strong> if $U$ is strongly convex. Gaussians are the canonical example.</p>
+</div>
+
+<!-- Animated figure: log-concave vs multimodal -->
+<div class="fig-container reveal">
+  <canvas id="fig-logconcave" width="700" height="300"></canvas>
+  <div class="fig-caption"><strong>Log-concave vs. multimodal.</strong> Left: Three log-concave distributions (Gaussian, Laplace, elastic net) — each has a single peak. Right: A mixture of two Gaussians is <em>not</em> log-concave (the dip between peaks means $U = -\log p$ is non-convex).</div>
+</div>
+
+<div class="def-block">
+  <div class="block-label">Definition — Total Variation Distance</div>
+  <p>For distributions $p$ and $q$: $\mathrm{TV}(p,q) = \frac{1}{2}\int |p(z) - q(z)|\,dz$. It measures the largest difference in probability assigned to any event.</p>
+</div>
+
+<!-- Animated figure: TV distance -->
+<div class="fig-container reveal">
+  <canvas id="fig-tv" width="700" height="280"></canvas>
+  <div class="slider-row" style="justify-content:center">
+    <span>Shift $\delta$:</span>
+    <input type="range" id="tv-slider" min="0" max="4" step="0.1" value="1.5">
+    <span class="val" id="tv-val">1.5</span>
+  </div>
+  <div class="fig-caption"><strong>Interactive:</strong> Drag the slider to shift $q$ away from $p$. The shaded area is $|p(z)-q(z)|$; TV $= \frac12$ × (shaded area). When $\delta=0$ the distributions are identical (TV$=0$).</div>
+</div>
+
+<h3 id="bg-proximal">Proximal Operators</h3>
+
+<div class="def-block">
+  <div class="block-label">Definition — Proximal Operator</div>
+  <p>For a convex function $g$ and parameter $\lambda > 0$:</p>
+  <div class="display-eq">$$\mathrm{prox}_{\lambda g}(\mathbf{z}) = \arg\min_{\mathbf{u}} \left\{g(\mathbf{u}) + \frac{1}{2\lambda}\|\mathbf{z}-\mathbf{u}\|^2\right\}$$</div>
+  <p>For $g(z)=|z|$, this is <strong>soft thresholding</strong>: $\mathrm{prox}_g(z) = \mathrm{sign}(z)\max(|z|-\lambda\beta,\, 0)$.</p>
+</div>
+
+<!-- Animated figure: soft thresholding -->
+<div class="fig-container reveal">
+  <canvas id="fig-softthresh" width="600" height="340"></canvas>
+  <div class="slider-row" style="justify-content:center">
+    <span>Threshold $\lambda\beta$:</span>
+    <input type="range" id="thresh-slider" min="0.2" max="3" step="0.1" value="1">
+    <span class="val" id="thresh-val">1.0</span>
+  </div>
+  <div class="fig-caption"><strong>Interactive:</strong> Adjust the threshold. Inputs within the dead zone (red) are snapped to zero; inputs outside are shrunk toward zero by $\lambda\beta$.</div>
+</div>
+
+</section>
+
+<!-- ═══════════ §3 PROOF 1 ═══════════ -->
+<section id="proof1" >
+<h2>3. Proof 1: Convex Reformulation (Theorem 3.1)</h2>
+
+<div class="callout big-picture">
+  <div class="callout-title">Big Picture</div>
+  <p><strong>Goal:</strong> Show that training a two-layer ReLU neural network with regularisation is equivalent to solving a convex optimisation problem in a higher-dimensional space.</p>
+  <p><strong>Why it matters:</strong> Neural network training is usually non-convex (many local minima, no guarantees). If we can reformulate it as a convex problem, we get a unique global solution, and — crucially — the resulting posterior distribution is log-concave.</p>
+</div>
+
+<h3>The Non-Convex Starting Point</h3>
+<p>Given inputs $X \in \mathbb{R}^{n \times d}$ and targets $y \in \mathbb{R}^n$, the training problem is:</p>
+<div class="display-eq">$$\min_{\{\mathbf{w}_j, \alpha_j\}} \frac{1}{2n}\sum_{i=1}^n \left(y_i - \sum_{j=1}^m \alpha_j [\mathbf{w}_j^\top x_i]_+\right)^2 + \frac{\beta}{2}\sum_{j=1}^m (\|\mathbf{w}_j\|^2 + \alpha_j^2)$$</div>
+
+<div class="callout warning">
+  <div class="callout-title">Watch Out</div>
+  <p>This problem is <strong>non-convex</strong> because of the product $\alpha_j [\mathbf{w}_j^\top x_i]_+$. When you multiply two unknowns, the function can have multiple local minima.</p>
+</div>
+
+<h3>Step 1: Absorbing the Bilinear Coupling (AM-GM Trick)</h3>
+<p>The AM-GM inequality gives $\frac{1}{2}(\|\mathbf{w}\|^2 + \alpha^2) \geq \|\mathbf{w}\|\cdot|\alpha|$ with equality when $\|\mathbf{w}\| = |\alpha|$.</p>
+<p>Define $\mathbf{v}_j := \alpha_j \mathbf{w}_j$. The data-fit becomes <em>linear</em> in $\mathbf{v}_j$, and the regulariser becomes the convex group norm $\|\mathbf{v}_j\|_2$.</p>
+
+<div class="callout key-idea">
+  <div class="callout-title">Key Idea</div>
+  <p>The substitution $\mathbf{v}_j = \alpha_j \mathbf{w}_j$ absorbs the bilinear product into a single vector. This is the step that converts a non-convex problem into a convex one.</p>
+</div>
+
+<h3>Step 2: From Semi-Infinite to Finite Program</h3>
+<p>The number of possible activation patterns can be exponential, giving a semi-infinite program. Conic duality (Lagrangian relaxation) handles the infinitely many constraints, and in practice we fix $P$ random sign patterns at initialisation.</p>
+
+<h3>Step 3: Variable Lifting</h3>
+<p>Stack all $2P$ blocks into $\mathbf{z} \in \mathbb{R}^{2Pd}$ to get the <strong>group LASSO</strong>:</p>
+<div class="display-eq">$$\min_{\mathbf{z} \in \mathbb{R}^{2Pd}} \frac{1}{2n}\|\tilde{X}\mathbf{z} - y\|^2 + \beta \sum_{j=1}^{2P} \|\mathbf{z}_j\|_2$$</div>
+
+<!-- Animated pipeline figure -->
+<div class="fig-container reveal">
+  <canvas id="fig-pipeline" width="750" height="200"></canvas>
+  <div class="fig-caption"><strong>The convex reformulation pipeline.</strong> A non-convex neural network (left) is transformed into a convex group LASSO (right) via the AM-GM substitution and pattern fixing. Animation shows the transformation step by step.</div>
+</div>
+
+<div class="callout checkpoint">
+  <div class="callout-title">Checkpoint</div>
+  <p>Training a two-layer ReLU network with $\ell_2$ regularisation is equivalent to solving the group LASSO. The non-convexity has been completely eliminated by moving to a higher-dimensional space. ◻</p>
+</div>
+</section>
+
+<!-- ═══════════ §4 INTERLUDE ═══════════ -->
+<section id="interlude" >
+<h2>4. Interlude: The Log-Concave Posterior</h2>
+<p>With the convex reformulation in hand, the posterior is:</p>
+<div class="display-eq">$$\pi(\mathbf{z} \mid \mathcal{D}) \propto \exp\!\left(-\underbrace{\frac{1}{2\sigma^2}\|\tilde{X}\mathbf{z}-y\|^2}_{f(\mathbf{z})\text{ — smooth, strongly convex}} - \underbrace{\beta\sum_j \|\mathbf{z}_j\|_2}_{g(\mathbf{z})\text{ — convex, non-smooth}}\right)$$</div>
+<p>Since $U(\mathbf{z}) = f(\mathbf{z}) + g(\mathbf{z})$ is the sum of two convex functions, it is convex, making $\pi$ <strong>log-concave</strong>. Moreover, $f$ is strongly convex (thanks to the elastic-net prior), so $\pi$ is <strong>strongly log-concave</strong>.</p>
+
+<div class="callout key-idea">
+  <div class="callout-title">Key Idea</div>
+  <p>Log-concavity = single mode = Langevin dynamics mix fast = efficient sampling = controlled exploration. The entire paper's exploration machinery rests on this one property.</p>
+</div>
+</section>
+
+<!-- ═══════════ §5 PROOF 2 ═══════════ -->
+<section id="proof2" >
+<h2>5. Proof 2: MYULA Convergence (Theorem 3.3)</h2>
+
+<div class="callout big-picture">
+  <div class="callout-title">Big Picture</div>
+  <p><strong>Goal:</strong> Show that the MYULA algorithm can produce a sample that is within total variation distance $\varepsilon$ of the true posterior in $\tilde{O}(D\kappa_\lambda^2/\varepsilon^2)$ iterations.</p>
+  <p><strong>Challenge:</strong> The posterior has a non-smooth part $g$ (the group LASSO penalty), so standard Langevin dynamics can't directly apply — the gradient of $g$ doesn't exist everywhere.</p>
+</div>
+
+<h3 id="langevin">What Is Langevin Dynamics?</h3>
+
+<div class="callout prereq">
+  <div class="callout-title">Prerequisites</div>
+  <p><strong>Continuous-time Langevin:</strong> $d\mathbf{z}_t = -\nabla U(\mathbf{z}_t)\,dt + \sqrt{2}\,d\mathbf{B}_t$</p>
+  <p><strong>Discrete-time (ULA):</strong> $\mathbf{z}_{k+1} = \mathbf{z}_k - \eta \nabla U(\mathbf{z}_k) + \sqrt{2\eta}\,\boldsymbol{\xi}_k$, where $\boldsymbol{\xi}_k \sim \mathcal{N}(\mathbf{0}, I)$.</p>
+  <p>The gradient $-\nabla U$ pulls the particle toward high-probability regions; the noise lets it explore.</p>
+</div>
+
+<!-- Animated Langevin figure -->
+<div class="fig-container reveal">
+  <canvas id="fig-langevin" width="700" height="340"></canvas>
+  <button id="langevin-restart" style="margin-top:0.5rem; padding:0.3rem 1rem; border-radius:6px; border:1px solid #ccc; cursor:pointer; font-size:0.85rem;">⟳ Restart animation</button>
+  <div class="fig-caption"><strong>Langevin dynamics.</strong> A particle (red dot) starts far from the mode and is pulled toward the peak by the gradient. Random noise prevents it from sitting at the peak and lets it explore the width of the distribution.</div>
+</div>
+
+<h3 id="three-errors">The Proof Strategy: Three Error Sources</h3>
+<p>The total sampling error decomposes as:</p>
+<div class="display-eq">$$\mathrm{TV}(\nu_K, \pi) \leq \underbrace{\mathrm{TV}(\nu_K, \pi_\lambda)}_{\text{sampling error from }\pi_\lambda} + \underbrace{\mathrm{TV}(\pi_\lambda, \pi)}_{\text{smoothing bias}}$$</div>
+<p>We split the error budget $\varepsilon$ into three equal parts of $\varepsilon/3$ each.</p>
+
+<!-- Three errors diagram -->
+<div class="fig-container reveal">
+  <canvas id="fig-three-errors" width="700" height="250"></canvas>
+  <div class="fig-caption"><strong>The three error sources in MYULA.</strong> Initialisation decays exponentially with steps $K$. Discretisation shrinks with smaller step size $\eta$. Smoothing bias shrinks with smaller $\lambda$.</div>
+</div>
+
+<h3 id="moreau-lemma">Lemma 1: Moreau–Yosida Smoothing</h3>
+
+<div class="def-block">
+  <div class="block-label">Definition — Moreau Envelope</div>
+  <p>$M_\lambda g(\mathbf{z}) = \inf_{\mathbf{u}} \left\{g(\mathbf{u}) + \frac{1}{2\lambda}\|\mathbf{z} - \mathbf{u}\|^2\right\}$</p>
+  <p>Near the origin, the sharp V-shape of $|z|$ is replaced by a smooth parabola. The gradient becomes continuous everywhere.</p>
+</div>
+
+<!-- Animated Moreau envelope figure -->
+<div class="fig-container reveal">
+  <canvas id="fig-moreau" width="700" height="300"></canvas>
+  <div class="slider-row" style="justify-content:center">
+    <span>Smoothing $\lambda$:</span>
+    <input type="range" id="moreau-slider" min="0.1" max="3" step="0.1" value="1">
+    <span class="val" id="moreau-val">1.0</span>
+  </div>
+  <div class="fig-caption"><strong>Interactive:</strong> Adjust $\lambda$ to see how the Moreau envelope (blue) smooths the non-differentiable $|z|$ (red dashed). Larger $\lambda$ = more smoothing but larger approximation gap $\delta$.</div>
+</div>
+
+<h3 id="ula-conv">Lemma 2: ULA Convergence for Smooth Targets</h3>
+<p>Once the target is smooth (via Moreau), ULA converges exponentially fast thanks to the <strong>log-Sobolev inequality</strong> (LSI) from strong convexity. The KL divergence contracts as $\mathrm{KL}(\nu_k \| \pi_\lambda) \leq e^{-2\mu\eta k}\,\mathrm{KL}(\nu_0 \| \pi_\lambda) + O(D\eta L^2/\mu)$.</p>
+
+<h3 id="smoothing-bias">Lemma 3: Smoothing Bias</h3>
+<p>$\mathrm{TV}(\pi_\lambda, \pi) \leq \lambda L_g^2/2$. Smaller $\lambda$ reduces bias but increases the smoothed Lipschitz constant $L = L_f + 1/\lambda$.</p>
+
+<div class="callout checkpoint">
+  <div class="callout-title">Checkpoint</div>
+  <p>MYULA produces samples within TV distance $\varepsilon$ of the true posterior in $\tilde{O}(D\kappa_\lambda^2/\varepsilon^2)$ iterations. Key ingredients: (1) Moreau smoothing (needs convexity for well-behaved prox), (2) LSI from strong convexity, (3) careful three-way error balancing. ◻</p>
+</div>
+</section>
+
+<!-- ═══════════ §6 PROOF 3 ═══════════ -->
+<section id="proof3" >
+<h2>6. Proof 3: Bayesian Regret Bound (Theorem 3.5)</h2>
+
+<div class="callout big-picture">
+  <div class="callout-title">Big Picture</div>
+  <p><strong>Goal:</strong> Show that total regret $\leq \tilde{O}(R_{\max} H^{3/2}\sqrt{PdT})$. The regret grows as $\sqrt{T}$, much slower than $T$ (linear) — the agent learns.</p>
+</div>
+
+<!-- Animated sublinear regret figure -->
+<div class="fig-container reveal">
+  <canvas id="fig-regret" width="650" height="320"></canvas>
+  <div class="fig-caption"><strong>Sublinear regret means the agent learns.</strong> Linear (red): no improvement. Our $\tilde{O}(\sqrt{T})$ bound (blue): average regret per step $\to 0$. Logarithmic (green): ideal for simpler settings.</div>
+</div>
+
+<h3 id="simulation">Lemma A: The Simulation Lemma</h3>
+
+<div class="lemma-block">
+  <div class="block-label">Lemma (Simulation)</div>
+  <p>The difference in value between two models decomposes into a sum of per-step Bellman errors:</p>
+  <div class="display-eq">$$V_0^\pi(\hat{P}) - V_0^\pi(P^\star) = \sum_{h=0}^{H-1} \mathbb{E}\!\left[(\hat{P} - P^\star)V_{h+1}^{\pi,\hat{P}}(s_h, a_h)\right]$$</div>
+</div>
+
+<!-- Animated simulation lemma figure -->
+<div class="fig-container reveal">
+  <canvas id="fig-simulation" width="700" height="220"></canvas>
+  <div class="fig-caption"><strong>The simulation lemma.</strong> The true model $P^\star$ (blue, top) and estimated model $\hat{P}$ (red, bottom) diverge at each step. The total value difference telescopes into per-step Bellman errors $e_h$ (orange).</div>
+</div>
+
+<h3 id="eluder">Lemma B: Eluder Dimension</h3>
+<p>Because the sign patterns are <em>fixed</em>, the function class $\mathcal{F}_P$ is <strong>linear</strong> in the lifted parameters $\mathbf{z}$. Therefore:</p>
+<ul>
+  <li>Eluder dimension: $\tilde{O}(Pd)$ — you need about $Pd$ informative observations.</li>
+  <li>Covering number: $\log \mathcal{N}(\mathcal{F}_P, \varepsilon) = O(Pd\log(BR_\phi/\varepsilon))$.</li>
+</ul>
+
+<div class="callout key-idea">
+  <div class="callout-title">Key Idea</div>
+  <p>This is where the convex reformulation is critical. In a standard neural network, the function depends <em>nonlinearly</em> on the weights. Here, because we've fixed the sign patterns, the dependence on $\mathbf{z}$ is linear, making $\mathcal{F}_P$ a $2Pd$-dimensional linear class with small eluder dimension.</p>
+</div>
+
+<h3 id="hellinger">Lemma C: PSRL Regret via Hellinger Geometry</h3>
+<p>This is the heart of the regret analysis. The proof chains: Simulation Lemma → Hellinger contraction → Cauchy–Schwarz → Elliptic Potential Lemma.</p>
+
+<div class="proof-block">
+  <div class="proof-toggle" onclick="toggleProof(this)">Proof sketch (click to expand)</div>
+  <div class="proof-body">
+    <p><strong>Step 1 — Posterior Sampling Identity:</strong> $\mathbb{E}[\Delta_n \mid \mathcal{D}_{n-1}] = \mathbb{E}[V_0^{\pi_n}(\hat{P}_n) - V_0^{\pi_n}(P^\star)]$.</p>
+    <p><strong>Step 2 — Apply Simulation Lemma:</strong> Decompose into $H$ Bellman errors, each bounded by $HR_{\max}\cdot\mathrm{TV}(\hat{P}_n, P^\star)$.</p>
+    <p><strong>Step 3 — Hellinger Contraction:</strong> Under Gaussian noise, $\mathrm{Hel}^2 \leq \|\hat{f}_n(x) - f^\star(x)\|^2/(8\sigma_\varepsilon^2)$, converting "how different are the distributions?" into "how different are the predictions?".</p>
+    <p><strong>Step 4 — Cauchy–Schwarz:</strong> $\sum_{n,h} \|e_{n,h}\| \leq \sqrt{T \sum_{n,h} \|e_{n,h}\|^2}$.</p>
+    <p><strong>Step 5 — Elliptic Potential:</strong> Because $\mathcal{F}_P$ is linear, cumulative squared prediction errors are bounded: $\sum_{n,h}\|\hat{f}_n(x_{n,h}) - f^\star(x_{n,h})\|^2 \leq d_{\mathrm{ms}} = \tilde{O}(HPd)$.</p>
+    <p><strong>Result:</strong> $\mathrm{Regret}_N^{\mathrm{exact}} = \tilde{O}(R_{\max} H^{3/2}\sqrt{PdT})$.</p>
+  </div>
+</div>
+
+<h3 id="coupling">Lemma D: Approximate Sampling Error</h3>
+<p>MYULA gives an approximation, not an exact sample. A <strong>coupling argument</strong> bounds the cost:</p>
+
+<!-- Coupling figure -->
+<div class="fig-container reveal">
+  <canvas id="fig-coupling" width="650" height="220"></canvas>
+  <div class="fig-caption"><strong>The coupling argument.</strong> Exact and approximate samples are coupled so they agree with probability $\geq 1-\varepsilon_{\mathrm{samp}}$. Extra regret per episode $\leq HR_{\max}\cdot\varepsilon_{\mathrm{samp}}$.</div>
+</div>
+
+<h3 id="assembly">Assembling the Final Bound</h3>
+
+<!-- Assembly flow diagram -->
+<div class="fig-container reveal">
+  <canvas id="fig-assembly" width="700" height="350"></canvas>
+  <div class="fig-caption"><strong>How the four lemmas assemble.</strong> Lemma A + B feed into Lemma C (exact regret). Lemma D (using MYULA from Proof 2) adds the approximate-sampling correction. Together: $\tilde{O}(R_{\max}H^{3/2}\sqrt{PdT})$.</div>
+</div>
+
+<div class="callout checkpoint">
+  <div class="callout-title">Checkpoint</div>
+  <p><strong>Where convexity is used:</strong> (1) Eluder dimension — linear class ⇒ $\tilde{O}(Pd)$. (2) Elliptic potential — precision matrix $H_k$ bounds cumulative errors. (3) Sampling — log-concavity ⇒ MYULA mixes in poly time. Without the convex reformulation, <em>all three</em> steps break. ◻</p>
+</div>
+</section>
+
+<!-- ═══════════ §7 SUMMARY ═══════════ -->
+<section id="summary" >
+<h2>7. Summary: The Logical Chain</h2>
+
+<div class="chain-box">
+  <ol>
+    <li><strong>Non-convex neural network</strong> $\xrightarrow{\text{Pilanci–Ergen}}$ <strong>Convex group LASSO</strong> in $\mathbb{R}^{2Pd}$<br>
+    <em>(Proof 1: variable substitution + duality + lifting)</em></li>
+    <li>Convex group LASSO + elastic-net prior ⇒ <strong>Log-concave posterior</strong> $\pi \propto \exp(-U)$<br>
+    <em>(Proposition 3.2: sum of convex functions is convex)</em></li>
+    <li>Log-concave posterior + Moreau smoothing ⇒ <strong>MYULA samples</strong> with $\mathrm{TV} \leq \varepsilon$ in poly time<br>
+    <em>(Proof 2: Bakry–Émery LSI + ULA convergence + smoothing bias)</em></li>
+    <li>Linear function class ⇒ <strong>Eluder dimension</strong> $\tilde{O}(Pd)$<br>
+    <em>(Lemma B: covering numbers for linear classes)</em></li>
+    <li>Simulation + Hellinger + Cauchy–Schwarz + Elliptic potential ⇒ $\mathrm{Regret}^{\mathrm{exact}} = \tilde{O}(H^{3/2}\sqrt{PdT})$<br>
+    <em>(Lemma C: the main regret calculation)</em></li>
+    <li>Exact regret + coupling for approximate sampling ⇒ <strong>Final bound</strong> $\tilde{O}(R_{\max} H^{3/2}\sqrt{PdT})$<br>
+    <em>(Lemma D + parameter choice $\varepsilon_{\mathrm{samp}} = 1/\sqrt{N}$)</em></li>
+  </ol>
+</div>
+
+<p><strong>The $H^{3/2}$ factor:</strong> One factor of $H$ comes from $\|V\|_\infty \leq HR_{\max}$. The extra $\sqrt{H}$ comes from per-episode (not per-step) posterior updates, giving $d_{\mathrm{ms}} = \tilde{O}(HPd)$.</p>
+</section>
+
+</main>
+
+<!-- ═══════════════════════════════════════════ -->
+<!--                 JAVASCRIPT                  -->
+<!-- ═══════════════════════════════════════════ -->
+<script>
+/* ── Utility ── */
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+
+/* ── TOC toggle (mobile) ── */
+$('#toc-toggle').addEventListener('click', () => $('#toc').classList.toggle('open'));
+
+/* ── Scroll reveal ── */
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0, rootMargin: '0px 0px -40px 0px' });
+$$('.fig-container.reveal, .callout, .def-block, .example-block, .lemma-block, .proof-block, .chain-box').forEach(el => {
+  el.classList.add('reveal');
+  obs.observe(el);
+});
+
+/* ── Active TOC highlight ── */
+const sections = $$('section[id], h3[id]');
+window.addEventListener('scroll', () => {
+  let current = '';
+  sections.forEach(s => { if (s.getBoundingClientRect().top < 150) current = s.id; });
+  $$('nav#toc a').forEach(a => {
+    a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+  });
+});
+
+/* ── Collapsible proofs ── */
+function toggleProof(el) {
+  el.classList.toggle('open');
+  el.nextElementSibling.classList.toggle('open');
+}
+
+/* ═══════ FIGURE DRAWING HELPERS ═══════ */
+function dpr(canvas) {
+  const r = window.devicePixelRatio || 1;
+  const w = canvas.width, h = canvas.height;
+  canvas.width = w * r; canvas.height = h * r;
+  canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(r, r);
+  return { ctx, w, h };
+}
+
+function gauss(x, mu, sig) {
+  return Math.exp(-0.5 * ((x - mu) / sig) ** 2) / (sig * Math.sqrt(2 * Math.PI));
+}
+
+/* ═══════ FIG: Convex vs Non-convex ═══════ */
+(function() {
+  const c = $('#fig-convex'); const { ctx, w, h } = dpr(c);
+  const mid = w / 2, pad = 40;
+
+  function drawPanel(ox, oy, pw, ph, fn, title, chordX1, chordX2, isConvex) {
+    const xmin = -2.2, xmax = 2.2, ymin = -1.5, ymax = 4.8;
+    const sx = v => ox + pad + (v - xmin) / (xmax - xmin) * (pw - 2 * pad);
+    const sy = v => oy + ph - pad - (v - ymin) / (ymax - ymin) * (ph - 2 * pad);
+
+    // Axes
+    ctx.strokeStyle = '#999'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(sx(xmin), sy(0)); ctx.lineTo(sx(xmax), sy(0)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(sx(0), sy(ymin)); ctx.lineTo(sx(0), sy(ymax)); ctx.stroke();
+
+    // Title
+    ctx.fillStyle = '#222'; ctx.font = 'bold 14px Helvetica Neue, sans-serif';
+    ctx.textAlign = 'center'; ctx.fillText(title, ox + pw / 2, oy + 18);
+
+    // Function curve
+    ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    for (let px = 0; px <= pw - 2 * pad; px++) {
+      const x = xmin + px / (pw - 2 * pad) * (xmax - xmin);
+      const y = fn(x);
+      if (px === 0) ctx.moveTo(sx(x), sy(y)); else ctx.lineTo(sx(x), sy(y));
+    }
+    ctx.stroke();
+
+    // Chord
+    const cy1 = fn(chordX1), cy2 = fn(chordX2);
+    ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
+    ctx.beginPath(); ctx.moveTo(sx(chordX1), sy(cy1)); ctx.lineTo(sx(chordX2), sy(cy2)); ctx.stroke();
+    ctx.setLineDash([]);
+    // Endpoints
+    ctx.fillStyle = '#ef4444';
+    [chordX1, chordX2].forEach(cx => {
+      ctx.beginPath(); ctx.arc(sx(cx), sy(fn(cx)), 5, 0, Math.PI * 2); ctx.fill();
+    });
+
+    // Label
+    ctx.font = '12px Helvetica Neue, sans-serif';
+    ctx.fillStyle = '#ef4444'; ctx.textAlign = 'center';
+    if (isConvex) {
+      ctx.fillText('chord above', ox + pw / 2 + 20, sy(cy1) - 12);
+      ctx.fillStyle = '#3b82f6';
+      ctx.fillText('graph below', ox + pw / 2 - 40, sy(fn(0)) + 25);
+    } else {
+      ctx.fillText('chord below!', ox + pw / 2, sy(cy1) + 22);
+      ctx.fillStyle = '#3b82f6';
+      ctx.fillText('two local minima', ox + pw / 2, oy + 38);
+    }
+  }
+
+  ctx.clearRect(0, 0, w, h);
+  drawPanel(0, 0, mid, h, x => x * x, 'Convex: f(x) = x²', -1.5, 1.5, true);
+  drawPanel(mid, 0, mid, h, x => x ** 4 - 2 * x * x, 'Non-convex: f(x) = x⁴ − 2x²', -1.2, 1.2, false);
+})();
+
+/* ═══════ FIG: Weighted norms (interactive) ═══════ */
+(function() {
+  const c = $('#fig-weighted-norms');
+  const { ctx, w, h } = dpr(c);
+  const slider = $('#wnorm-slider'), valSpan = $('#wnorm-val');
+
+  function draw() {
+    const ratio = parseFloat(slider.value);
+    valSpan.textContent = ratio.toFixed(1);
+    ctx.clearRect(0, 0, w, h);
+    const mid = w / 2, r = 90;
+
+    // Left panel: standard norm (circle)
+    ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(mid / 2, h / 2, r, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#222'; ctx.font = 'bold 13px Helvetica Neue, sans-serif';
+    ctx.textAlign = 'center'; ctx.fillText('Standard norm: ‖v‖ = 1', mid / 2, 24);
+    ctx.fillStyle = '#3b82f6'; ctx.font = '12px Helvetica Neue, sans-serif';
+    ctx.fillText('circle', mid / 2 + r * 0.7, h / 2 - r * 0.7);
+
+    // Right panel: H-norm ellipse
+    const a = r / Math.sqrt(ratio), b = r;
+    ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.ellipse(mid + mid / 2, h / 2, a, b, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#222'; ctx.font = 'bold 13px Helvetica Neue, sans-serif';
+    ctx.fillText('H-norm: ‖v‖_H = 1', mid + mid / 2, 24);
+
+    // Axes labels
+    ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(mid + mid / 2 - a, h / 2); ctx.lineTo(mid + mid / 2 + a, h / 2); ctx.stroke();
+    ctx.fillStyle = '#22c55e'; ctx.font = '11px Helvetica Neue, sans-serif';
+    ctx.fillText('certain (short)', mid + mid / 2, h / 2 + a + 18);
+
+    ctx.strokeStyle = '#a855f7'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(mid + mid / 2, h / 2 - b); ctx.lineTo(mid + mid / 2, h / 2 + b); ctx.stroke();
+    ctx.fillStyle = '#a855f7';
+    ctx.fillText('uncertain (long)', mid + mid / 2 + a + 10, h / 2 - 10);
+
+    // Axes
+    ctx.strokeStyle = '#ccc'; ctx.lineWidth = 0.5;
+    [mid / 2, mid + mid / 2].forEach(cx => {
+      ctx.beginPath(); ctx.moveTo(cx - r - 20, h / 2); ctx.lineTo(cx + r + 20, h / 2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx, h / 2 - r - 20); ctx.lineTo(cx, h / 2 + r + 20); ctx.stroke();
+    });
+  }
+  slider.addEventListener('input', draw);
+  draw();
+})();
+
+/* ═══════ FIG: Condition number (interactive) ═══════ */
+(function() {
+  const c = $('#fig-condition');
+  const { ctx, w, h } = dpr(c);
+  const slider = $('#cond-slider'), valSpan = $('#cond-val');
+
+  function draw() {
+    const kappa = parseFloat(slider.value);
+    valSpan.textContent = kappa.toFixed(1);
+    ctx.clearRect(0, 0, w, h);
+    const cx = w / 2, cy = h / 2 + 10, maxR = 110;
+
+    ctx.fillStyle = '#222'; ctx.font = 'bold 14px Helvetica Neue, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`Contours of f(x) with κ = ${kappa.toFixed(1)}`, cx, 22);
+
+    // Draw contour ellipses
+    for (let i = 1; i <= 5; i++) {
+      const r = maxR * i / 5;
+      const a = r / Math.sqrt(kappa), b = r;
+      ctx.strokeStyle = `hsl(220, 70%, ${40 + i * 8}%)`;
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(cx, cy, a, b, 0, 0, Math.PI * 2); ctx.stroke();
+    }
+
+    // Axes
+    ctx.strokeStyle = '#bbb'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(cx - maxR - 30, cy); ctx.lineTo(cx + maxR + 30, cy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx, cy - maxR - 30); ctx.lineTo(cx, cy + maxR + 30); ctx.stroke();
+
+    // Minimum dot
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ef4444'; ctx.font = '11px Helvetica Neue, sans-serif';
+    ctx.fillText('min', cx + 10, cy + 15);
+
+    // Note
+    ctx.fillStyle = '#666'; ctx.font = '12px Helvetica Neue, sans-serif';
+    if (kappa > 3) ctx.fillText('Gradient descent zig-zags in the narrow valley', cx, h - 10);
+    else ctx.fillText('Gradient descent goes straight to the minimum', cx, h - 10);
+  }
+  slider.addEventListener('input', draw);
+  draw();
+})();
+
+/* ═══════ FIG: Log-concave vs multimodal ═══════ */
+(function() {
+  const c = $('#fig-logconcave');
+  const { ctx, w, h } = dpr(c);
+  const mid = w / 2, pad = 45;
+
+  function drawDist(ox, ow, fns, labels, colors, title) {
+    const xmin = -5, xmax = 5, ymax = 0.5;
+    const sx = v => ox + pad + (v - xmin) / (xmax - xmin) * (ow - 2 * pad);
+    const sy = v => h - pad - v / ymax * (h - 2 * pad);
+
+    // Axis
+    ctx.strokeStyle = '#999'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(sx(xmin), sy(0)); ctx.lineTo(sx(xmax), sy(0)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(sx(0), sy(0)); ctx.lineTo(sx(0), sy(ymax)); ctx.stroke();
+
+    ctx.fillStyle = '#222'; ctx.font = 'bold 13px Helvetica Neue, sans-serif';
+    ctx.textAlign = 'center'; ctx.fillText(title, ox + ow / 2, 20);
+
+    fns.forEach((fn, i) => {
+      ctx.strokeStyle = colors[i]; ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let px = 0; px < ow - 2 * pad; px++) {
+        const x = xmin + px / (ow - 2 * pad) * (xmax - xmin);
+        const y = fn(x);
+        if (px === 0) ctx.moveTo(sx(x), sy(y)); else ctx.lineTo(sx(x), sy(y));
+      }
+      ctx.stroke();
+      // Label
+      ctx.fillStyle = colors[i]; ctx.font = '11px Helvetica Neue, sans-serif';
+      ctx.fillText(labels[i], ox + ow / 2, h - pad + 14 + i * 13);
+    });
+  }
+
+  ctx.clearRect(0, 0, w, h);
+  drawDist(0, mid, [
+    x => gauss(x, 0, 1),
+    x => 0.5 * Math.exp(-Math.abs(x)),
+    x => 0.35 * Math.exp(-x * x / 2 - Math.abs(x)),
+  ], ['Gaussian', 'Laplace', 'Elastic net'], ['#3b82f6', '#22c55e', '#a855f7'], 'Log-concave (single peak)');
+
+  drawDist(mid, mid, [
+    x => 0.5 * gauss(x, -1.8, 0.8) + 0.5 * gauss(x, 1.8, 0.8),
+  ], ['Mixture of two Gaussians'], ['#ef4444'], 'NOT log-concave (two peaks)');
+})();
+
+/* ═══════ FIG: TV distance (interactive) ═══════ */
+(function() {
+  const c = $('#fig-tv');
+  const { ctx, w, h } = dpr(c);
+  const slider = $('#tv-slider'), valSpan = $('#tv-val');
+  const pad = 50;
+  const xmin = -5, xmax = 7, ymax = 0.45;
+  const sx = v => pad + (v - xmin) / (xmax - xmin) * (w - 2 * pad);
+  const sy = v => h - pad - v / ymax * (h - 2 * pad);
+
+  function draw() {
+    const delta = parseFloat(slider.value);
+    valSpan.textContent = delta.toFixed(1);
+    ctx.clearRect(0, 0, w, h);
+
+    // Axes
+    ctx.strokeStyle = '#999'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(sx(xmin), sy(0)); ctx.lineTo(sx(xmax), sy(0)); ctx.stroke();
+
+    // Shaded |p - q|
+    ctx.fillStyle = 'rgba(239, 68, 68, 0.15)';
+    ctx.beginPath();
+    for (let px = 0; px < w - 2 * pad; px++) {
+      const x = xmin + px / (w - 2 * pad) * (xmax - xmin);
+      const d = Math.abs(gauss(x, 0, 1) - gauss(x, delta, 1));
+      const yy = sy(d);
+      if (px === 0) ctx.moveTo(sx(x), yy); else ctx.lineTo(sx(x), yy);
+    }
+    for (let px = w - 2 * pad; px >= 0; px--) {
+      const x = xmin + px / (w - 2 * pad) * (xmax - xmin);
+      ctx.lineTo(sx(x), sy(0));
+    }
+    ctx.fill();
+
+    // p(z)
+    ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    for (let px = 0; px < w - 2 * pad; px++) {
+      const x = xmin + px / (w - 2 * pad) * (xmax - xmin);
+      if (px === 0) ctx.moveTo(sx(x), sy(gauss(x, 0, 1))); else ctx.lineTo(sx(x), sy(gauss(x, 0, 1)));
+    }
+    ctx.stroke();
+
+    // q(z)
+    ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    for (let px = 0; px < w - 2 * pad; px++) {
+      const x = xmin + px / (w - 2 * pad) * (xmax - xmin);
+      if (px === 0) ctx.moveTo(sx(x), sy(gauss(x, delta, 1))); else ctx.lineTo(sx(x), sy(gauss(x, delta, 1)));
+    }
+    ctx.stroke();
+
+    // Labels
+    ctx.fillStyle = '#3b82f6'; ctx.font = '13px Helvetica Neue, sans-serif';
+    ctx.textAlign = 'center'; ctx.fillText('p(z)', sx(-1.5), sy(gauss(-1.5, 0, 1)) - 8);
+    ctx.fillStyle = '#ef4444'; ctx.fillText('q(z)', sx(delta + 1.5), sy(gauss(delta + 1.5, delta, 1)) - 8);
+
+    // Compute TV
+    let tvsum = 0;
+    for (let px = 0; px < 500; px++) {
+      const x = xmin + px / 500 * (xmax - xmin);
+      tvsum += Math.abs(gauss(x, 0, 1) - gauss(x, delta, 1)) * (xmax - xmin) / 500;
+    }
+    const tv = (tvsum / 2).toFixed(3);
+    ctx.fillStyle = '#222'; ctx.font = 'bold 14px Helvetica Neue, sans-serif';
+    ctx.fillText(`TV(p, q) = ${tv}`, w / 2, 22);
+  }
+  slider.addEventListener('input', draw);
+  draw();
+})();
+
+/* ═══════ FIG: Soft thresholding (interactive) ═══════ */
+(function() {
+  const c = $('#fig-softthresh');
+  const { ctx, w, h } = dpr(c);
+  const slider = $('#thresh-slider'), valSpan = $('#thresh-val');
+  const pad = 50;
+  const xmin = -4, xmax = 4, ymin = -3, ymax = 3;
+  const sx = v => pad + (v - xmin) / (xmax - xmin) * (w - 2 * pad);
+  const sy = v => h - pad - (v - ymin) / (ymax - ymin) * (h - 2 * pad);
+
+  function draw() {
+    const t = parseFloat(slider.value);
+    valSpan.textContent = t.toFixed(1);
+    ctx.clearRect(0, 0, w, h);
+
+    // Axes
+    ctx.strokeStyle = '#999'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(sx(xmin), sy(0)); ctx.lineTo(sx(xmax), sy(0)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(sx(0), sy(ymin)); ctx.lineTo(sx(0), sy(ymax)); ctx.stroke();
+
+    // Identity line
+    ctx.strokeStyle = '#ccc'; ctx.lineWidth = 1; ctx.setLineDash([5, 3]);
+    ctx.beginPath(); ctx.moveTo(sx(xmin), sy(xmin)); ctx.lineTo(sx(xmax), sy(xmax)); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Dead zone shading
+    ctx.fillStyle = 'rgba(239, 68, 68, 0.1)';
+    ctx.fillRect(sx(-t), sy(ymax), sx(t) - sx(-t), sy(ymin) - sy(ymax));
+
+    // Soft threshold function
+    ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 3;
+    ctx.beginPath();
+    for (let px = 0; px <= w - 2 * pad; px++) {
+      const x = xmin + px / (w - 2 * pad) * (xmax - xmin);
+      const y = Math.abs(x) > t ? x - Math.sign(x) * t : 0;
+      if (px === 0) ctx.moveTo(sx(x), sy(y)); else ctx.lineTo(sx(x), sy(y));
+    }
+    ctx.stroke();
+
+    // Dead zone label
+    ctx.fillStyle = '#ef4444'; ctx.font = '12px Helvetica Neue, sans-serif';
+    ctx.textAlign = 'center'; ctx.fillText('"dead zone": output = 0', (sx(-t) + sx(t)) / 2, sy(0) + 20);
+
+    // Title
+    ctx.fillStyle = '#222'; ctx.font = 'bold 13px Helvetica Neue, sans-serif';
+    ctx.fillText(`Soft thresholding with λβ = ${t.toFixed(1)}`, w / 2, 18);
+
+    // Axis labels
+    ctx.fillStyle = '#666'; ctx.font = '12px Helvetica Neue, sans-serif';
+    ctx.fillText('input z', w - pad + 5, sy(0) + 4);
+    ctx.save(); ctx.translate(sx(0) - 16, pad); ctx.rotate(-Math.PI / 2);
+    ctx.fillText('output prox(z)', 0, 0); ctx.restore();
+  }
+  slider.addEventListener('input', draw);
+  draw();
+})();
+
+/* ═══════ FIG: Langevin dynamics (animated) ═══════ */
+(function() {
+  const c = $('#fig-langevin');
+  const { ctx, w, h } = dpr(c);
+  const pad = 50;
+  const xmin = -4.5, xmax = 4.5, ymax = 0.45;
+  const sx = v => pad + (v - xmin) / (xmax - xmin) * (w - 2 * pad);
+  const sy = v => h - pad - v / ymax * (h - 2 * pad);
+
+  // Pre-compute trajectory
+  const trajectory = [];
+  let z = 3.5, eta = 0.15;
+  for (let i = 0; i < 80; i++) {
+    trajectory.push(z);
+    z = z - eta * z + Math.sqrt(2 * eta) * (Math.random() * 2 - 1) * 0.8;
+  }
+
+  let frame = 0, animId = null;
+  function draw() {
+    ctx.clearRect(0, 0, w, h);
+
+    // Title
+    ctx.fillStyle = '#222'; ctx.font = 'bold 14px Helvetica Neue, sans-serif';
+    ctx.textAlign = 'center'; ctx.fillText('Langevin dynamics: a particle explores the distribution', w / 2, 22);
+
+    // Axis
+    ctx.strokeStyle = '#999'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(sx(xmin), sy(0)); ctx.lineTo(sx(xmax), sy(0)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(sx(xmin), sy(0)); ctx.lineTo(sx(xmin), sy(ymax)); ctx.stroke();
+
+    // Distribution fill
+    ctx.fillStyle = 'rgba(59, 130, 246, 0.08)';
+    ctx.beginPath(); ctx.moveTo(sx(xmin), sy(0));
+    for (let px = 0; px < w - 2 * pad; px++) {
+      const x = xmin + px / (w - 2 * pad) * (xmax - xmin);
+      ctx.lineTo(sx(x), sy(gauss(x, 0, 1)));
+    }
+    ctx.lineTo(sx(xmax), sy(0)); ctx.fill();
+
+    // Distribution curve
+    ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let px = 0; px < w - 2 * pad; px++) {
+      const x = xmin + px / (w - 2 * pad) * (xmax - xmin);
+      if (px === 0) ctx.moveTo(sx(x), sy(gauss(x, 0, 1)));
+      else ctx.lineTo(sx(x), sy(gauss(x, 0, 1)));
+    }
+    ctx.stroke();
+
+    // Trajectory up to current frame
+    const n = Math.min(frame, trajectory.length - 1);
+    if (n > 0) {
+      ctx.strokeStyle = 'rgba(239, 68, 68, 0.5)'; ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      for (let i = 0; i <= n; i++) {
+        const x = trajectory[i], y = gauss(x, 0, 1);
+        if (i === 0) ctx.moveTo(sx(x), sy(y)); else ctx.lineTo(sx(x), sy(y));
+      }
+      ctx.stroke();
+
+      // Trail dots
+      for (let i = Math.max(0, n - 12); i <= n; i++) {
+        const x = trajectory[i], y = gauss(x, 0, 1);
+        const alpha = 0.3 + 0.7 * (i - Math.max(0, n - 12)) / 12;
+        ctx.fillStyle = `rgba(239, 68, 68, ${alpha})`;
+        ctx.beginPath(); ctx.arc(sx(x), sy(y), 3, 0, Math.PI * 2); ctx.fill();
+      }
+
+      // Current particle (big dot)
+      const cx = trajectory[n], cy = gauss(cx, 0, 1);
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath(); ctx.arc(sx(cx), sy(cy), 6, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(sx(cx), sy(cy), 6, 0, Math.PI * 2); ctx.stroke();
+    }
+
+    // Annotations
+    ctx.font = '12px Helvetica Neue, sans-serif';
+    if (n < 5) {
+      ctx.fillStyle = '#ef4444'; ctx.textAlign = 'left';
+      ctx.fillText('start (far away)', sx(3.5) + 10, sy(gauss(3.5, 0, 1)) + 4);
+    }
+    ctx.fillStyle = '#16a34a'; ctx.textAlign = 'center';
+    ctx.fillText('gradient pulls toward peak', w / 2 - 100, sy(0.35));
+    ctx.fillStyle = '#7c3aed';
+    ctx.fillText('noise lets particle explore', w / 2 + 100, sy(0.35));
+
+    // Y-axis label
+    ctx.save(); ctx.fillStyle = '#666'; ctx.font = '12px Helvetica Neue, sans-serif';
+    ctx.translate(14, h / 2); ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = 'center'; ctx.fillText('π(z) ∝ exp(−U(z))', 0, 0);
+    ctx.restore();
+
+    frame++;
+    if (frame <= trajectory.length + 10) animId = requestAnimationFrame(draw);
+  }
+
+  // Start when visible
+  const langObs = new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting && frame === 0) draw();
+  }, { threshold: 0.3 });
+  langObs.observe(c);
+
+  $('#langevin-restart').addEventListener('click', () => {
+    if (animId) cancelAnimationFrame(animId);
+    frame = 0; draw();
+  });
+})();
+
+/* ═══════ FIG: Three errors ═══════ */
+(function() {
+  const c = $('#fig-three-errors');
+  const { ctx, w, h } = dpr(c);
+
+  function roundRect(x, y, rw, rh, rad, fill, stroke) {
+    ctx.beginPath();
+    ctx.moveTo(x + rad, y); ctx.lineTo(x + rw - rad, y);
+    ctx.quadraticCurveTo(x + rw, y, x + rw, y + rad);
+    ctx.lineTo(x + rw, y + rh - rad);
+    ctx.quadraticCurveTo(x + rw, y + rh, x + rw - rad, y + rh);
+    ctx.lineTo(x + rad, y + rh);
+    ctx.quadraticCurveTo(x, y + rh, x, y + rh - rad);
+    ctx.lineTo(x, y + rad);
+    ctx.quadraticCurveTo(x, y, x + rad, y);
+    ctx.closePath();
+    if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+    if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 1.5; ctx.stroke(); }
+  }
+
+  const bw = 170, bh = 70, gap = 30;
+  const y1 = 85, y0 = 10;
+  const xs = [w / 2 - 1.5 * bw - gap, w / 2 - bw / 2, w / 2 + bw / 2 + gap];
+
+  // Total box
+  const tw = 3 * bw + 2 * gap;
+  roundRect(w / 2 - tw / 2, y0, tw, 50, 8, '#faf5ff', '#a855f7');
+  ctx.fillStyle = '#333'; ctx.font = 'bold 13px Helvetica Neue, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('Total: TV(ν_K, π) ≤ ε/3 + ε/3 + ε/3 = ε', w / 2, y0 + 30);
+
+  // Three boxes
+  const labels = ['Initialisation', 'Discretisation', 'Smoothing bias'];
+  const formulas = ['C₁ e^{−μηK}', 'C₂√(DηL²/μ)', 'λL²_g / 2'];
+  const notes = ['(exponential decay)', '(step size η error)', '(Moreau approx.)'];
+  const fills = ['#eff6ff', '#fef2f2', '#f0fdf4'];
+  const strokes = ['#3b82f6', '#ef4444', '#22c55e'];
+  const controls = ['K (more steps)', 'η (smaller steps)', 'λ (less smoothing)'];
+
+  xs.forEach((x, i) => {
+    roundRect(x, y1, bw, bh, 8, fills[i], strokes[i]);
+    ctx.fillStyle = '#222'; ctx.font = 'bold 12px Helvetica Neue, sans-serif';
+    ctx.fillText(labels[i], x + bw / 2, y1 + 22);
+    ctx.font = '11px Helvetica Neue, sans-serif'; ctx.fillStyle = '#555';
+    ctx.fillText(formulas[i], x + bw / 2, y1 + 40);
+    ctx.fillText(notes[i], x + bw / 2, y1 + 55);
+
+    // Arrow up
+    ctx.strokeStyle = strokes[i]; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x + bw / 2, y1); ctx.lineTo(w / 2 - tw / 4 + i * tw / 4, y0 + 50); ctx.stroke();
+
+    // ε/3 label
+    ctx.fillStyle = strokes[i]; ctx.font = '11px Helvetica Neue, sans-serif';
+    ctx.fillText('≤ ε/3', (x + bw / 2 + w / 2 - tw / 4 + i * tw / 4) / 2, y1 - 5);
+
+    // Control label below
+    ctx.fillStyle = '#888'; ctx.font = '11px Helvetica Neue, sans-serif';
+    ctx.fillText('controlled by ' + controls[i], x + bw / 2, y1 + bh + 18);
+  });
+})();
+
+/* ═══════ FIG: Moreau envelope (interactive) ═══════ */
+(function() {
+  const c = $('#fig-moreau');
+  const { ctx, w, h } = dpr(c);
+  const slider = $('#moreau-slider'), valSpan = $('#moreau-val');
+  const mid = w / 2, pad = 50;
+
+  function draw() {
+    const lam = parseFloat(slider.value);
+    valSpan.textContent = lam.toFixed(1);
+    ctx.clearRect(0, 0, w, h);
+
+    // LEFT: Functions
+    const xmin = -3.5, xmax = 3.5, ymin = -0.3, ymax = 4;
+    const sxL = v => pad + (v - xmin) / (xmax - xmin) * (mid - 2 * pad);
+    const syL = v => h - pad - (v - ymin) / (ymax - ymin) * (h - 2 * pad);
+
+    // Axis
+    ctx.strokeStyle = '#999'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(sxL(xmin), syL(0)); ctx.lineTo(sxL(xmax), syL(0)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(sxL(0), syL(ymin)); ctx.lineTo(sxL(0), syL(ymax)); ctx.stroke();
+
+    // |z|
+    ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    for (let px = 0; px < mid - 2 * pad; px++) {
+      const x = xmin + px / (mid - 2 * pad) * (xmax - xmin);
+      if (px === 0) ctx.moveTo(sxL(x), syL(Math.abs(x))); else ctx.lineTo(sxL(x), syL(Math.abs(x)));
+    }
+    ctx.stroke(); ctx.setLineDash([]);
+
+    // Moreau envelope
+    ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    for (let px = 0; px < mid - 2 * pad; px++) {
+      const x = xmin + px / (mid - 2 * pad) * (xmax - xmin);
+      const y = Math.abs(x) <= lam ? x * x / (2 * lam) : Math.abs(x) - lam / 2;
+      if (px === 0) ctx.moveTo(sxL(x), syL(y)); else ctx.lineTo(sxL(x), syL(y));
+    }
+    ctx.stroke();
+
+    // Gap annotation
+    const gx = 2.5, gy1 = Math.abs(gx), gy2 = Math.abs(gx) - lam / 2;
+    if (gy1 - gy2 > 0.1) {
+      ctx.strokeStyle = '#7c3aed'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(sxL(gx), syL(gy1)); ctx.lineTo(sxL(gx), syL(gy2)); ctx.stroke();
+      ctx.fillStyle = '#7c3aed'; ctx.font = '11px Helvetica Neue, sans-serif';
+      ctx.textAlign = 'left'; ctx.fillText('≤ δ', sxL(gx) + 6, syL((gy1 + gy2) / 2) + 4);
+    }
+
+    ctx.fillStyle = '#222'; ctx.font = 'bold 13px Helvetica Neue, sans-serif';
+    ctx.textAlign = 'center'; ctx.fillText('Functions', mid / 2, 18);
+    ctx.font = '11px Helvetica Neue, sans-serif';
+    ctx.fillStyle = '#ef4444'; ctx.fillText('g(z) = |z|', mid / 2 - 50, 38);
+    ctx.fillStyle = '#3b82f6'; ctx.fillText('M_λ g(z)', mid / 2 + 50, 38);
+
+    // RIGHT: Gradients
+    const sxR = v => mid + pad + (v - xmin) / (xmax - xmin) * (mid - 2 * pad);
+    const gymin = -1.5, gymax = 1.5;
+    const syR = v => h - pad - (v - gymin) / (gymax - gymin) * (h - 2 * pad);
+
+    ctx.strokeStyle = '#999'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(sxR(xmin), syR(0)); ctx.lineTo(sxR(xmax), syR(0)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(sxR(0), syR(gymin)); ctx.lineTo(sxR(0), syR(gymax)); ctx.stroke();
+
+    // ∂|z| (step function)
+    ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
+    ctx.beginPath(); ctx.moveTo(sxR(xmin), syR(-1)); ctx.lineTo(sxR(-0.02), syR(-1)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(sxR(0.02), syR(1)); ctx.lineTo(sxR(xmax), syR(1)); ctx.stroke();
+    ctx.setLineDash([]);
+    // Gap
+    ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 1; ctx.setLineDash([2, 2]);
+    ctx.beginPath(); ctx.moveTo(sxR(0), syR(-1)); ctx.lineTo(sxR(0), syR(1)); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // ∇M_λ|z| (smooth)
+    ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    for (let px = 0; px < mid - 2 * pad; px++) {
+      const x = xmin + px / (mid - 2 * pad) * (xmax - xmin);
+      const g = Math.abs(x) <= lam ? x / lam : Math.sign(x);
+      if (px === 0) ctx.moveTo(sxR(x), syR(g)); else ctx.lineTo(sxR(x), syR(g));
+    }
+    ctx.stroke();
+
+    ctx.fillStyle = '#222'; ctx.font = 'bold 13px Helvetica Neue, sans-serif';
+    ctx.textAlign = 'center'; ctx.fillText('Gradients', mid + mid / 2, 18);
+    ctx.fillStyle = '#16a34a'; ctx.font = '12px Helvetica Neue, sans-serif';
+    ctx.fillText('now continuous!', mid + mid / 2, h - 14);
+  }
+  slider.addEventListener('input', draw);
+  draw();
+})();
+
+/* ═══════ FIG: Pipeline (animated) ═══════ */
+(function() {
+  const c = $('#fig-pipeline');
+  const { ctx, w, h } = dpr(c);
+
+  function roundRect(x, y, rw, rh, rad, fill) {
+    ctx.beginPath();
+    ctx.moveTo(x + rad, y); ctx.lineTo(x + rw - rad, y);
+    ctx.quadraticCurveTo(x + rw, y, x + rw, y + rad);
+    ctx.lineTo(x + rw, y + rh - rad);
+    ctx.quadraticCurveTo(x + rw, y + rh, x + rw - rad, y + rh);
+    ctx.lineTo(x + rad, y + rh);
+    ctx.quadraticCurveTo(x, y + rh, x, y + rh - rad);
+    ctx.lineTo(x, y + rad);
+    ctx.quadraticCurveTo(x, y, x + rad, y);
+    ctx.closePath();
+    ctx.fillStyle = fill; ctx.fill();
+    ctx.strokeStyle = '#999'; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+
+  const boxes = [
+    { x: 20, label: 'Neural Network', sub: 'min_{w,α} f(α[w⊤x]₊)', note: 'non-convex', fill: '#fef2f2' },
+    { x: 270, label: 'After Substitution', sub: 'v_j = α_j w_j', note: 'bilinear → linear', fill: '#fefce8' },
+    { x: 520, label: 'Group LASSO', sub: 'min_z ‖X̃z−y‖² + β∑‖z_j‖', note: 'convex!', fill: '#f0fdf4' },
+  ];
+
+  let progress = 0;
+  function draw() {
+    ctx.clearRect(0, 0, w, h);
+    const bw = 200, bh = 80;
+    boxes.forEach((b, i) => {
+      const alpha = Math.min(1, Math.max(0, (progress - i * 30) / 30));
+      ctx.globalAlpha = alpha;
+      roundRect(b.x, (h - bh) / 2, bw, bh, 10, b.fill);
+      ctx.fillStyle = '#222'; ctx.font = 'bold 13px Helvetica Neue, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(b.label, b.x + bw / 2, h / 2 - 10);
+      ctx.font = '11px Helvetica Neue, sans-serif'; ctx.fillStyle = '#555';
+      ctx.fillText(b.sub, b.x + bw / 2, h / 2 + 8);
+      ctx.fillStyle = i === 2 ? '#16a34a' : '#888';
+      ctx.font = i === 2 ? 'bold 11px Helvetica Neue, sans-serif' : '11px Helvetica Neue, sans-serif';
+      ctx.fillText(b.note, b.x + bw / 2, h / 2 + 25);
+      ctx.globalAlpha = 1;
+
+      // Arrow
+      if (i < 2) {
+        const arrowAlpha = Math.min(1, Math.max(0, (progress - (i + 0.5) * 30) / 20));
+        ctx.globalAlpha = arrowAlpha;
+        const ax = b.x + bw + 5, ay = h / 2;
+        ctx.strokeStyle = '#333'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(ax + 40, ay); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(ax + 40, ay); ctx.lineTo(ax + 32, ay - 6); ctx.moveTo(ax + 40, ay); ctx.lineTo(ax + 32, ay + 6); ctx.stroke();
+        const labels = ['AM-GM + ± split', 'fix P patterns + stack'];
+        ctx.fillStyle = '#666'; ctx.font = '10px Helvetica Neue, sans-serif';
+        ctx.fillText(labels[i], ax + 20, ay - 12);
+        ctx.globalAlpha = 1;
+      }
+    });
+
+    progress++;
+    if (progress < 100) requestAnimationFrame(draw);
+  }
+
+  const pipObs = new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting && progress === 0) draw();
+  }, { threshold: 0.3 });
+  pipObs.observe(c);
+})();
+
+/* ═══════ FIG: Sublinear regret ═══════ */
+(function() {
+  const c = $('#fig-regret');
+  const { ctx, w, h } = dpr(c);
+  const pad = 55;
+  const xmax = 100, ymax = 110;
+  const sx = v => pad + v / xmax * (w - 2 * pad);
+  const sy = v => h - pad - v / ymax * (h - 2 * pad);
+
+  ctx.clearRect(0, 0, w, h);
+
+  // Axes
+  ctx.strokeStyle = '#333'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(sx(0), sy(0)); ctx.lineTo(sx(xmax), sy(0)); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(sx(0), sy(0)); ctx.lineTo(sx(0), sy(ymax)); ctx.stroke();
+  ctx.fillStyle = '#333'; ctx.font = '13px Helvetica Neue, sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('Total steps T', w / 2, h - 8);
+  ctx.save(); ctx.translate(14, h / 2); ctx.rotate(-Math.PI / 2); ctx.fillText('Regret', 0, 0); ctx.restore();
+
+  // Tick marks
+  ctx.font = '11px Helvetica Neue, sans-serif'; ctx.fillStyle = '#666';
+  [0, 25, 50, 75, 100].forEach(v => {
+    ctx.fillText(v, sx(v), sy(0) + 16);
+    ctx.beginPath(); ctx.moveTo(sx(v), sy(0)); ctx.lineTo(sx(v), sy(0) + 4); ctx.stroke();
+  });
+  [0, 25, 50, 75, 100].forEach(v => {
+    ctx.textAlign = 'right'; ctx.fillText(v, sx(0) - 6, sy(v) + 4);
+    ctx.beginPath(); ctx.moveTo(sx(0) - 4, sy(v)); ctx.lineTo(sx(0), sy(v)); ctx.stroke();
+  });
+
+  // Linear
+  ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 2.5; ctx.setLineDash([8, 5]);
+  ctx.beginPath(); ctx.moveTo(sx(0), sy(0)); ctx.lineTo(sx(100), sy(100)); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // sqrt(T)
+  ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  for (let t = 0; t <= 100; t++) {
+    const y = 10 * Math.sqrt(t);
+    if (t === 0) ctx.moveTo(sx(t), sy(y)); else ctx.lineTo(sx(t), sy(y));
+  }
+  ctx.stroke();
+
+  // log(T)
+  ctx.strokeStyle = '#16a34a'; ctx.lineWidth = 2.5; ctx.setLineDash([3, 4]);
+  ctx.beginPath();
+  for (let t = 1; t <= 100; t++) {
+    const y = 25 * Math.log(t + 1) / Math.log(101);
+    if (t === 1) ctx.moveTo(sx(t), sy(y)); else ctx.lineTo(sx(t), sy(y));
+  }
+  ctx.stroke(); ctx.setLineDash([]);
+
+  // Legend
+  ctx.textAlign = 'left'; ctx.font = '12px Helvetica Neue, sans-serif';
+  const lx = pad + 15, ly = 30;
+  ctx.fillStyle = '#ef4444'; ctx.fillRect(lx, ly, 20, 2); ctx.fillText('Linear: T (no learning)', lx + 28, ly + 5);
+  ctx.fillStyle = '#3b82f6'; ctx.fillRect(lx, ly + 20, 20, 2); ctx.fillText('Sublinear: Õ(√T) (our bound)', lx + 28, ly + 25);
+  ctx.fillStyle = '#16a34a'; ctx.fillRect(lx, ly + 40, 20, 2); ctx.fillText('Logarithmic: O(log T) (ideal)', lx + 28, ly + 45);
+})();
+
+/* ═══════ FIG: Simulation Lemma ═══════ */
+(function() {
+  const c = $('#fig-simulation');
+  const { ctx, w, h } = dpr(c);
+
+  const states = ['s₀', 's₁', 's₂', 's₃'];
+  const n = states.length;
+  const sx = i => 80 + i * (w - 160) / (n - 1);
+  const y1 = 55, y2 = 165; // true vs estimated
+
+  ctx.clearRect(0, 0, w, h);
+
+  // Labels
+  ctx.fillStyle = '#3b82f6'; ctx.font = '13px Helvetica Neue, sans-serif';
+  ctx.textAlign = 'right'; ctx.fillText('True P*:', sx(0) - 25, y1 + 5);
+  ctx.fillStyle = '#ef4444'; ctx.fillText('Model P̂:', sx(0) - 25, y2 + 5);
+
+  states.forEach((s, i) => {
+    // True model nodes
+    ctx.fillStyle = '#dbeafe'; ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(sx(i), y1, 20, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#222'; ctx.font = '13px Helvetica Neue, sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(s, sx(i), y1 + 5);
+
+    // Estimated model nodes
+    ctx.fillStyle = '#fee2e2'; ctx.strokeStyle = '#ef4444';
+    ctx.beginPath(); ctx.arc(sx(i), y2, 20, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#222';
+    ctx.fillText(i === 0 ? s : 'ŝ' + i, sx(i), y2 + 5);
+
+    // Arrows between consecutive nodes
+    if (i < n - 1) {
+      // True
+      ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(sx(i) + 22, y1); ctx.lineTo(sx(i + 1) - 22, y1); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(sx(i + 1) - 22, y1); ctx.lineTo(sx(i + 1) - 28, y1 - 5); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(sx(i + 1) - 22, y1); ctx.lineTo(sx(i + 1) - 28, y1 + 5); ctx.stroke();
+      // Estimated
+      ctx.strokeStyle = '#ef4444';
+      ctx.beginPath(); ctx.moveTo(sx(i) + 22, y2); ctx.lineTo(sx(i + 1) - 22, y2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(sx(i + 1) - 22, y2); ctx.lineTo(sx(i + 1) - 28, y2 - 5); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(sx(i + 1) - 22, y2); ctx.lineTo(sx(i + 1) - 28, y2 + 5); ctx.stroke();
+
+      // Action label
+      ctx.fillStyle = '#888'; ctx.font = '11px Helvetica Neue, sans-serif';
+      ctx.fillText('a' + i, (sx(i) + sx(i + 1)) / 2, y1 - 10);
+    }
+
+    // Bellman error arrows (orange)
+    if (i > 0) {
+      ctx.strokeStyle = '#f97316'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(sx(i), y1 + 22); ctx.lineTo(sx(i), y2 - 22); ctx.stroke();
+      // Arrowheads
+      ctx.beginPath(); ctx.moveTo(sx(i), y1 + 22); ctx.lineTo(sx(i) - 4, y1 + 28); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(sx(i), y1 + 22); ctx.lineTo(sx(i) + 4, y1 + 28); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(sx(i), y2 - 22); ctx.lineTo(sx(i) - 4, y2 - 28); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(sx(i), y2 - 22); ctx.lineTo(sx(i) + 4, y2 - 28); ctx.stroke();
+      ctx.fillStyle = '#f97316'; ctx.font = 'bold 12px Helvetica Neue, sans-serif';
+      ctx.fillText('e' + (i - 1), sx(i) + 14, (y1 + y2) / 2 + 4);
+    }
+  });
+
+  // Bottom label
+  ctx.fillStyle = '#c2410c'; ctx.font = '12px Helvetica Neue, sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('Total value difference = e₀ + e₁ + e₂ = Σ (Bellman errors)', w / 2, h - 8);
+})();
+
+/* ═══════ FIG: Coupling ═══════ */
+(function() {
+  const c = $('#fig-coupling');
+  const { ctx, w, h } = dpr(c);
+  ctx.clearRect(0, 0, w, h);
+
+  const cx1 = w * 0.22, cx2 = w * 0.78, cy = 65;
+
+  // Title
+  ctx.fillStyle = '#222'; ctx.font = 'bold 13px Helvetica Neue, sans-serif';
+  ctx.textAlign = 'center'; ctx.fillText('Episode n: exact vs. approximate sampling', w / 2, 18);
+
+  // Exact sample
+  ctx.fillStyle = '#dbeafe'; ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(cx1, cy, 30, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#222'; ctx.font = '13px Helvetica Neue, sans-serif';
+  ctx.fillText('f̂ᵉˣ', cx1, cy + 5);
+  ctx.fillStyle = '#3b82f6'; ctx.font = '11px Helvetica Neue, sans-serif';
+  ctx.fillText('exact posterior', cx1, cy - 40);
+
+  // Approx sample
+  ctx.fillStyle = '#fee2e2'; ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(cx2, cy, 30, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#222'; ctx.font = '13px Helvetica Neue, sans-serif';
+  ctx.fillText('f̂ᵃᵖ', cx2, cy + 5);
+  ctx.fillStyle = '#ef4444'; ctx.font = '11px Helvetica Neue, sans-serif';
+  ctx.fillText('MYULA approx.', cx2, cy - 40);
+
+  // Coupling link
+  ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 2; ctx.setLineDash([5, 3]);
+  ctx.beginPath(); ctx.moveTo(cx1 + 32, cy); ctx.lineTo(cx2 - 32, cy); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#22c55e'; ctx.font = '12px Helvetica Neue, sans-serif';
+  ctx.fillText('coupling', w / 2, cy - 8);
+
+  // Agree / Disagree
+  ctx.fillStyle = '#222'; ctx.font = '13px Helvetica Neue, sans-serif';
+  ctx.fillText('Agree (prob ≥ 1 − ε_samp): same policy → regret diff = 0', w / 2, cy + 65);
+  ctx.fillText('Disagree (prob ≤ ε_samp): worst case → regret diff ≤ HR_max', w / 2, cy + 85);
+
+  // Result box
+  const bx = w / 2 - 200, by = cy + 105, bw = 400, bh = 32;
+  ctx.fillStyle = '#fefce8'; ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.roundRect ? ctx.roundRect(bx, by, bw, bh, 6) : ctx.rect(bx, by, bw, bh);
+  ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#333'; ctx.font = 'bold 12px Helvetica Neue, sans-serif';
+  ctx.fillText('Expected extra regret per episode ≤ HR_max · ε_samp', w / 2, by + 20);
+})();
+
+/* ═══════ FIG: Assembly flow ═══════ */
+(function() {
+  const c = $('#fig-assembly');
+  const { ctx, w, h } = dpr(c);
+
+  function roundRect(x, y, rw, rh, rad, fill, stroke) {
+    ctx.beginPath();
+    ctx.moveTo(x + rad, y); ctx.lineTo(x + rw - rad, y);
+    ctx.quadraticCurveTo(x + rw, y, x + rw, y + rad);
+    ctx.lineTo(x + rw, y + rh - rad);
+    ctx.quadraticCurveTo(x + rw, y + rh, x + rw - rad, y + rh);
+    ctx.lineTo(x + rad, y + rh);
+    ctx.quadraticCurveTo(x, y + rh, x, y + rh - rad);
+    ctx.lineTo(x, y + rad);
+    ctx.quadraticCurveTo(x, y, x + rad, y);
+    ctx.closePath();
+    ctx.fillStyle = fill; ctx.fill();
+    ctx.strokeStyle = stroke; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+
+  ctx.clearRect(0, 0, w, h);
+
+  const boxes = [
+    { x: 20, y: 20, w: 200, h: 55, label: 'Lemma A: Simulation', sub: 'decomposes into H errors', fill: '#dbeafe', stroke: '#3b82f6' },
+    { x: 20, y: 105, w: 200, h: 55, label: 'Lemma B: Eluder dim', sub: 'dim_E = Õ(Pd)', fill: '#dcfce7', stroke: '#22c55e' },
+    { x: 480, y: 20, w: 200, h: 55, label: 'Proof 2: MYULA', sub: 'ε_samp = 1/√N', fill: '#f3e8ff', stroke: '#a855f7' },
+    { x: 480, y: 105, w: 200, h: 55, label: 'Lemma D: Coupling', sub: '+ NHR_max ε_samp', fill: '#fee2e2', stroke: '#ef4444' },
+    { x: 200, y: 190, w: 300, h: 55, label: 'Lemma C: Exact regret', sub: 'Õ(H^{3/2} √(PdT))', fill: '#ffedd5', stroke: '#f97316' },
+    { x: 175, y: 280, w: 350, h: 55, label: 'Theorem 3.5: Final Bound', sub: 'Regret = Õ(R_max H^{3/2} √(PdT))', fill: '#fef9c3', stroke: '#eab308' },
+  ];
+
+  boxes.forEach(b => {
+    roundRect(b.x, b.y, b.w, b.h, 8, b.fill, b.stroke);
+    ctx.fillStyle = '#222'; ctx.font = 'bold 12px Helvetica Neue, sans-serif';
+    ctx.textAlign = 'center'; ctx.fillText(b.label, b.x + b.w / 2, b.y + 22);
+    ctx.font = '11px Helvetica Neue, sans-serif'; ctx.fillStyle = '#555';
+    ctx.fillText(b.sub, b.x + b.w / 2, b.y + 40);
+  });
+
+  // Arrows
+  function arrow(x1, y1, x2, y2, dash) {
+    ctx.strokeStyle = '#666'; ctx.lineWidth = 1.5;
+    if (dash) ctx.setLineDash([4, 3]); else ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    const angle = Math.atan2(y2 - y1, x2 - x1);
+    ctx.beginPath();
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(x2 - 8 * Math.cos(angle - 0.4), y2 - 8 * Math.sin(angle - 0.4));
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(x2 - 8 * Math.cos(angle + 0.4), y2 - 8 * Math.sin(angle + 0.4));
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  arrow(120, 75, 300, 190);   // A → C
+  arrow(120, 160, 250, 190);  // B → C
+  arrow(580, 75, 580, 105);   // MYULA → D
+  arrow(350, 245, 350, 280);  // C → Final
+  arrow(530, 160, 450, 280);  // D → Final
+
+  // Annotations
+  ctx.fillStyle = '#888'; ctx.font = '10px Helvetica Neue, sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText('Hellinger + Cauchy–Schwarz', 135, 85);
+  ctx.fillText('elliptic potential', 135, 170);
+})();
+
+</script>
+</body>
+</html>

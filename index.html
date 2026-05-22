@@ -438,7 +438,7 @@ section.reveal { opacity: 1; transform: none; }
 <section id="interlude" >
 <h2>4. Interlude: The Log-Concave Posterior</h2>
 <p>With the convex reformulation in hand, the posterior is:</p>
-<div class="display-eq">$$\pi(\mathbf{z} \mid \mathcal{D}) \propto \exp\!\left(-\underbrace{\frac{1}{2\sigma^2}\|\tilde{X}\mathbf{z}-y\|^2}_{f(\mathbf{z})\text{ — smooth, strongly convex}} - \underbrace{\beta\sum_j \|\mathbf{z}_j\|_2}_{g(\mathbf{z})\text{ — convex, non-smooth}}\right)$$</div>
+<div class="display-eq">$$\pi(\mathbf{z} \mid \mathcal{D}) \propto \exp\!\left(-\underbrace{\frac{1}{2\sigma^2}\|\tilde{X}\mathbf{z}-y\|^2 - \frac{1}{2\sigma_0^2}\|\mathbf{z}\|^2}_{f(\mathbf{z})\text{ — smooth, strongly convex}} - \underbrace{\beta\sum_j \|\mathbf{z}_j\|_2}_{g(\mathbf{z})\text{ — convex, non-smooth}}\right)$$</div>
 <p>Since $U(\mathbf{z}) = f(\mathbf{z}) + g(\mathbf{z})$ is the sum of two convex functions, it is convex, making $\pi$ <strong>log-concave</strong>. Moreover, $f$ is strongly convex (thanks to the elastic-net prior), so $\pi$ is <strong>strongly log-concave</strong>.</p>
 
 <div class="callout key-idea">

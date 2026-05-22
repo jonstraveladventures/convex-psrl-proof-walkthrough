@@ -1015,7 +1015,7 @@ function gauss(x, mu, sig) {
     z = z - eta * z + Math.sqrt(2 * eta) * (Math.random() * 2 - 1) * 0.8;
   }
 
-  let frame = 0, animId = null;
+  let frame = 0, step = 0, animId = null;
   function draw() {
     ctx.clearRect(0, 0, w, h);
 
@@ -1047,8 +1047,8 @@ function gauss(x, mu, sig) {
     }
     ctx.stroke();
 
-    // Trajectory up to current frame
-    const n = Math.min(frame, trajectory.length - 1);
+    // Advance trajectory only every 3 frames (slow it down)
+    const n = Math.min(step, trajectory.length - 1);
     if (n > 0) {
       ctx.strokeStyle = 'rgba(239, 68, 68, 0.5)'; ctx.lineWidth = 1.5;
       ctx.beginPath();
@@ -1074,16 +1074,16 @@ function gauss(x, mu, sig) {
       ctx.beginPath(); ctx.arc(sx(cx), sy(cy), 6, 0, Math.PI * 2); ctx.stroke();
     }
 
-    // Annotations
+    // Annotations — placed well away from the Gaussian peak
     ctx.font = '12px Helvetica Neue, sans-serif';
     if (n < 5) {
       ctx.fillStyle = '#ef4444'; ctx.textAlign = 'left';
       ctx.fillText('start (far away)', sx(3.5) + 10, sy(gauss(3.5, 0, 1)) + 4);
     }
-    ctx.fillStyle = '#16a34a'; ctx.textAlign = 'center';
-    ctx.fillText('gradient pulls toward peak', w / 2 - 100, sy(0.35));
-    ctx.fillStyle = '#7c3aed';
-    ctx.fillText('noise lets particle explore', w / 2 + 100, sy(0.35));
+    ctx.fillStyle = '#16a34a'; ctx.textAlign = 'left';
+    ctx.fillText('gradient pulls toward peak', pad + 10, sy(0.38));
+    ctx.fillStyle = '#7c3aed'; ctx.textAlign = 'right';
+    ctx.fillText('noise lets particle explore', w - pad - 10, sy(0.38));
 
     // Y-axis label
     ctx.save(); ctx.fillStyle = '#666'; ctx.font = '12px Helvetica Neue, sans-serif';
@@ -1092,7 +1092,8 @@ function gauss(x, mu, sig) {
     ctx.restore();
 
     frame++;
-    if (frame <= trajectory.length + 10) animId = requestAnimationFrame(draw);
+    if (frame % 3 === 0) step++;  // advance trajectory step every 3 animation frames
+    if (step <= trajectory.length + 5) animId = requestAnimationFrame(draw);
   }
 
   // Start when visible
@@ -1158,9 +1159,13 @@ function gauss(x, mu, sig) {
     ctx.strokeStyle = strokes[i]; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(x + bw / 2, y1); ctx.lineTo(w / 2 - tw / 4 + i * tw / 4, y0 + 50); ctx.stroke();
 
-    // ε/3 label
+    // ε/3 label — offset to the right of the arrow midpoint
+    const arrowMidX = (x + bw / 2 + w / 2 - tw / 4 + i * tw / 4) / 2;
+    const arrowMidY = (y1 + y0 + 50) / 2;
     ctx.fillStyle = strokes[i]; ctx.font = '11px Helvetica Neue, sans-serif';
-    ctx.fillText('≤ ε/3', (x + bw / 2 + w / 2 - tw / 4 + i * tw / 4) / 2, y1 - 5);
+    ctx.textAlign = 'left';
+    ctx.fillText('≤ ε/3', arrowMidX + 8, arrowMidY - 2);
+    ctx.textAlign = 'center';
 
     // Control label below
     ctx.fillStyle = '#888'; ctx.font = '11px Helvetica Neue, sans-serif';
@@ -1569,10 +1574,10 @@ function gauss(x, mu, sig) {
   arrow(350, 245, 350, 280);  // C → Final
   arrow(530, 160, 450, 280);  // D → Final
 
-  // Annotations
+  // Annotations — positioned at arrow midpoints, offset to avoid overlap
   ctx.fillStyle = '#888'; ctx.font = '10px Helvetica Neue, sans-serif'; ctx.textAlign = 'left';
-  ctx.fillText('Hellinger + Cauchy–Schwarz', 135, 85);
-  ctx.fillText('elliptic potential', 135, 170);
+  ctx.fillText('Hellinger + Cauchy–Schwarz', 225, 128);
+  ctx.fillText('elliptic potential', 190, 180);
 })();
 
 </script>
